@@ -7,7 +7,7 @@ import feedparser
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 # Replace with your actual #normalsville-post Channel ID (Numbers only)
-CHANNEL_ID = 123456789012345678
+CHANNEL_ID = 1537894788962193408
 
 # URL for Normalsville's RSS feed on ComicFury
 RSS_URL = 'https://normalsville.the-comic.org/rss/'
