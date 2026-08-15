@@ -49,12 +49,14 @@ async def check_new_comic():
 
             if latest_link != last_seen_comic:
                 last_seen_comic = latest_link
-                channel = bot.get_channel(CHANNEL_ID)
-                if channel:
+                
+                # Fetch channel directly from Discord API
+                try:
+                    channel = await bot.fetch_channel(CHANNEL_ID)
                     await channel.send(f"🎨 **New Normalsville Comic Posted!**\n**{latest_title}**\n{latest_link}")
                     print("Successfully sent message to Discord!", flush=True)
-                else:
-                    print(f"Error: Channel {CHANNEL_ID} not found. Check bot permissions.", flush=True)
+                except Exception as channel_error:
+                    print(f"Could not access channel: {channel_error}", flush=True)
             else:
                 print("No new comic found since last check.", flush=True)
     except Exception as e:
