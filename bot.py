@@ -21,7 +21,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- Discord Bot Code ---
 TOKEN = os.getenv('DISCORD_TOKEN')
-CHANNEL_ID = 123456789012345678  # Replace with your channel ID
+CHANNEL_ID = 1537894788962193408  # Replace with your channel ID
 RSS_URL = 'https://normalsville.the-comic.org/rss/'
 
 intents = discord.Intents.default()
