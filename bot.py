@@ -21,7 +21,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- Discord Bot Code ---
 TOKEN = os.getenv('DISCORD_TOKEN')
-CHANNEL_ID = 1537894788962193408  # Replace with your channel ID
+CHANNEL_ID = 1537894788962193408  # Your channel ID
 RSS_URL = 'https://normalsville.the-comic.org/rss/'
 
 intents = discord.Intents.default()
@@ -43,15 +43,14 @@ async def check_new_comic():
             latest_link = latest_entry.link
             latest_title = latest_entry.title
 
-            if last_seen_comic is None:
-                last_seen_comic = latest_link
-                return
-
+            # Post if a new comic link is found (or on initial boot-up)
             if latest_link != last_seen_comic:
                 last_seen_comic = latest_link
                 channel = bot.get_channel(CHANNEL_ID)
                 if channel:
                     await channel.send(f"🎨 **New Normalsville Comic Posted!**\n**{latest_title}**\n{latest_link}")
+                else:
+                    print(f"Error: Could not find channel with ID {CHANNEL_ID}")
     except Exception as e:
         print(f"Error checking feed: {e}")
 
