@@ -1,70 +1,52 @@
+import asyncio
 import os
-import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import discord
-from discord.ext import tasks, commands
+from discord.ext import commands, tasks
 import feedparser
 
-# --- Tiny Web Server for Render Free Tier ---
-class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is alive!")
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
-def run_web_server():
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-    server.serve_forever()
-
-threading.Thread(target=run_web_server, daemon=True).start()
-
-# --- Discord Bot Code ---
-TOKEN = os.getenv('DISCORD_TOKEN')
-CHANNEL_ID = 1537894788962193408
-RSS_URL = 'https://normalsville.the-comic.org/rss/'
-
-intents = discord.Intents.default()
-bot = commands.Bot(command_prefix='!', intents=intents)
-last_seen_comic = None
+CHANNEL_ID = 1538989136898424931  # Replace with your actual channel ID
+CURRENT_COMIC_NUM = 1
+MAX_ARCHIVE_COMIC = 476
+RSS_FEED_URL = "https://normalsville.the-comic.org/rss/"
+LAST_POSTED_LINK = None
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}', flush=True)
-    if not check_new_comic.is_running():
-        check_new_comic.start()
+    print(f"Logged in as {bot.user}")
+    if not post_archive.is_running():
+        post_archive.start()
 
-@tasks.loop(minutes=15)
-async def check_new_comic():
-    global last_seen_comic
-    try:
-        print("Checking RSS feed...", flush=True)
-        feed = feedparser.parse(RSS_URL)
-        
-        if feed.entries:
-            latest_entry = feed.entries[0]
-            latest_link = latest_entry.link
-            latest_title = latest_entry.title
-            print(f"Fetched latest comic link: {latest_link}", flush=True)
+# Loop 1: Post through the archive every 10 seconds
+@tasks.loop(seconds=10)
+async def post_archive():
+    global CURRENT_COMIC_NUM
+    channel = bot.get_channel(CHANNEL_ID)
 
-            if latest_link != last_seen_comic:
-                last_seen_comic = latest_link
-                
-                # Fetch channel directly from Discord API
-                try:
-                    channel = await bot.fetch_channel(CHANNEL_ID)
-                    await channel.send(f"🎨 **New Normalsville Comic Posted!**\n**{latest_title}**\n{latest_link}")
-                    print("Successfully sent message to Discord!", flush=True)
-                except Exception as channel_error:
-                    print(f"Could not access channel: {channel_error}", flush=True)
-            else:
-                print("No new comic found since last check.", flush=True)
-    except Exception as e:
-        print(f"Error checking feed: {e}", flush=True)
+    if channel and CURRENT_COMIC_NUM <= MAX_ARCHIVE_COMIC:
+        comic_url = f"https://normalsville.the-comic.org/comics/{CURRENT_COMIC_NUM}/"
+        await channel.send(f"**Archive Comic #{CURRENT_COMIC_NUM}:** {comic_url}")
+        CURRENT_COMIC_NUM += 1
+    else:
+        print("Archive catch-up complete! Switching to live RSS checking...")
+        post_archive.stop()
+        if not check_new_comics.is_running():
+            check_new_comics.start()
 
-@check_new_comic.before_loop
-async def before_check():
-    await bot.wait_until_ready()
+# Loop 2: Runs only after archive finishes, checks RSS feed every 10 minutes
+@tasks.loop(minutes=10)
+async def check_new_comics():
+    global LAST_POSTED_LINK
+    channel = bot.get_channel(CHANNEL_ID)
+    feed = feedparser.parse(RSS_FEED_URL)
+    
+    if feed.entries:
+        latest_entry = feed.entries[0]
+        if LAST_POSTED_LINK != latest_entry.link:
+            # If it's the first time running, set the link so it doesn't duplicate
+            if LAST_POSTED_LINK is not None:
+                await channel.send(f"**New Comic Released!** {latest_entry.link}")
+            LAST_POSTED_LINK = latest_entry.link
 
-if TOKEN:
-    bot.run(TOKEN)
+bot.run(os.getenv("TOKEN"))  # Or replace with "YOUR_BOT_TOKEN"
