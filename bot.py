@@ -1,7 +1,9 @@
 import os
+import asyncio
 import discord
 from discord.ext import commands, tasks
 import feedparser
+from aiohttp import web
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
@@ -11,7 +13,8 @@ TARGET_CHANNELS = [
     1538994665838084207   # Server 2
 ]
 
-CURRENT_COMIC_NUM = 1
+# Resumes from comic #88
+CURRENT_COMIC_NUM = 88
 MAX_ARCHIVE_COMIC = 476
 RSS_FEED_URL = "https://normalsville.the-comic.org/rss/"
 LAST_POSTED_LINK = None
@@ -56,4 +59,22 @@ async def check_new_comics():
                         await channel.send(f"**New Comic Released!** {latest_entry.link}")
             LAST_POSTED_LINK = latest_entry.link
 
-bot.run(os.getenv("TOKEN"))
+# Web server ping endpoint to satisfy Render's port binding check
+async def handle_ping(request):
+    return web.Response(text="Bot is online!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
+async def main():
+    async with bot:
+        await start_web_server()
+        await bot.start(os.getenv("TOKEN"))
+
+asyncio.run(main())
