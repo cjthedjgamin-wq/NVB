@@ -45,7 +45,7 @@ async def on_ready():
     if not check_new_comics.is_running():
         check_new_comics.start()
 
-@tasks.loop(minutes=10)
+@tasks.loop(minutes=1)
 async def check_new_comics():
     global LAST_POSTED_ID
     feed = feedparser.parse(RSS_FEED_URL)
